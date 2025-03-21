@@ -9,7 +9,7 @@ this macro will help you create the skeleton of DTO and assign
 and/or map the values you want each field of DTO to have
 from DBO/Model.
 
-### Example
+## Example
 
 The `impl_dto` in sample code below, creates the following wrappers:
 ```rust
