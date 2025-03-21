@@ -4,5 +4,8 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-paste = "=1.0.15"
-serde = { version = "=1.0.219", features = ["derive"] }
+paste = "*"
+serde = "*"
+
+[dev-dependencies]
+serde_json = "*"
