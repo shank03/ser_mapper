@@ -11,7 +11,22 @@ from DBO/Model.
 
 ## Example
 
-The `impl_dto` in sample code below, creates the following wrappers:
+Here's how macro is used (see full sample below):
+```rust
+impl_dto!(
+    #[derive(Debug)]    // derives
+    pub struct UserResponse<UserDbo> {    // Dto<Dbo/Model>
+        // dto_field: type = dbo_field OptionalMap(=> lambda with &dbo_field:type -> returns mapped_type),
+        user_id: String = id => TableId::get_id,
+        first_name: String = full_name => UserDbo::get_first_name,
+        last_name: String = full_name => UserDbo::get_last_name,
+        email_id: String = email,
+        age: u8 = age => |a: &Age| a.0,
+    }
+);
+```
+
+The `impl_dto` macro creates the following wrappers (see full sample below):
 ```rust
 // ...
 struct UserResponse { id: String, first_name: String, last_name: String, email_id: String, age: u8 };
