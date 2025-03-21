@@ -68,7 +68,7 @@ mod dto {
 
     impl_dto!(
         #[derive(Debug)]
-        pub struct UserResponseDto<UserDbo> {
+        pub struct UserResponse<UserDbo> {
             user_id: String = id => TableId::get_id,
             first_name: String = full_name => UserDbo::get_first_name,
             last_name: String = full_name => UserDbo::get_last_name,
@@ -93,7 +93,7 @@ fn main() {
     };
 
     // Instead of mapping, use either of the wrappers created by `impl_dto` macro
-    let dto = dto::_UserResponseDto(dbo);
+    let dto = dto::_UserResponse(dbo);
 
     // and it will serialize as written, for response
     assert_eq!(
