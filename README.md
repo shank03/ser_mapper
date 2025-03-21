@@ -17,12 +17,12 @@ The `impl_dto` in sample code below, creates the following wrappers:
 struct UserResponse { id: String, first_name: String, last_name: String, email_id: String, age: u8 };
 
 /// All of the below implements [`serde::Serialize`]
-struct _UserResponse(pub DboModel);
-struct _UserResponseRef<'a>(pub &'a DboModel);
-struct _UserResponseRefOption<'a>(pub &'a Option<DboModel>);
-struct _UserResponseOptionRef<'a>(pub Option<&'a DboModel>);
-struct _UserResponseVec(pub Vec<DboModel>);
-struct _UserResponseVecRef<'a>(pub Vec<&'a DboModel>);
+struct _UserResponse(pub UserDbo);
+struct _UserResponseRef<'a>(pub &'a UserDbo);
+struct _UserResponseRefOption<'a>(pub &'a Option<UserDbo>);
+struct _UserResponseOptionRef<'a>(pub Option<&'a UserDbo>);
+struct _UserResponseVec(pub Vec<UserDbo>);
+struct _UserResponseVecRef<'a>(pub Vec<&'a UserDbo>);
 // ...
 ```
 
