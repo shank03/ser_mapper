@@ -2,6 +2,24 @@
 name = "ser_mapper"
 version = "0.1.0"
 edition = "2024"
+authors = ["Shashank Verma <shank03>"]
+license = "MIT"
+description = "Mapped DTO serialzation wrapper for DBO/Model"
+repository = "https://github.com/shank03/ser_mapper"
+readme = "README.md"
+keywords = [
+    "serialize",
+    "json",
+    "dto",
+    "dbo",
+    "model",
+    "mapper",
+    "mapping",
+    "dto-mapper",
+    "data-transfer-object",
+    "model-mapper",
+]
+categories = ["data-structures", "web-programming", "rust-patterns"]
 
 [dependencies]
 paste = "*"
