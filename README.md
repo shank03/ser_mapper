@@ -11,7 +11,7 @@ from DBO/Model.
 
 ### Example
 
-The `impl_dto` in below example creates the following wrappers:
+The `impl_dto` in sample code below, creates the following wrappers:
 ```rust
 // ...
 struct UserResponse { id: String, first_name: String, last_name: String, email_id: String, age: u8 };
@@ -26,6 +26,7 @@ struct _UserResponseVecRef<'a>(pub Vec<&'a DboModel>);
 // ...
 ```
 
+Sample code:
 ```rust
 mod datastore {
     #[derive(Debug)]
@@ -94,7 +95,7 @@ fn main() {
     // Instead of mapping, use either of the wrappers created by `impl_dto` macro
     let dto = dto::_UserResponseDto(dbo);
 
-    // assert serialization for response
+    // and it will serialize as written, for response
     assert_eq!(
         r#"{
   "user_id": "abcd_123",
