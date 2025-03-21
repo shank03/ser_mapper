@@ -8,7 +8,7 @@
 /// Let's say your DTO is `UserResponse` and DBO/Model is `User`.
 /// This macro will generate the following structs for serializing
 /// (not mapping) `User` into `UserResponse`:
-/// - `struct UserResponse { ... };`
+/// - `struct UserResponse { /* mentioned fields in macro */ };`
 /// - `struct _UserResponse(pub User);`
 /// - `struct _UserResponseRef<'a>(pub &'a User);`
 /// - `struct _UserResponseRefOption<'a>(pub &'a Option<User>);`
@@ -18,7 +18,7 @@
 ///
 /// and all the structs starting with a `_` will implement [`serde::Serialize`].
 ///
-/// You can then just wrap the DBO/Model into DTO as `Dto(Dbo/model)`
+/// You can then just wrap the DBO/Model into DTO as `_Dto_Kind(Dbo/model)`
 /// and [`serde`] will serialize DBO/Model to DTO according to mapping.
 ///
 /// Example:
@@ -108,6 +108,8 @@ macro_rules! impl_dto {
             )*
         }
     ) => {
+
+        #[allow(dead_code)]
         $(#[$m])*
         $vis struct $dto {
             $(
@@ -124,6 +126,12 @@ macro_rules! impl_dto {
             }
 
             $vis struct [<_ $dto>](pub $inner_entity);
+            $vis struct [<_ $dto Ref>]<'a>(pub &'a $inner_entity);
+            $vis struct [<_ $dto RefOption>]<'a>(pub &'a Option<$inner_entity>);
+            $vis struct [<_ $dto OptionRef>]<'a>(pub Option<&'a $inner_entity>);
+            $vis struct [<_ $dto VecRef>]<'a>(pub &'a Vec<$inner_entity>);
+            $vis struct [<_ $dto Vec>](pub Vec<$inner_entity>);
+
             impl serde::Serialize for [<_ $dto>] {
                 fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
                 where
@@ -132,8 +140,6 @@ macro_rules! impl_dto {
                     self.0.dto_serialize(serializer)
                 }
             }
-
-            $vis struct [<_ $dto Ref>]<'a>(pub &'a $inner_entity);
             impl<'a> serde::Serialize for [<_ $dto Ref>]<'a> {
                 fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
                 where
@@ -142,8 +148,6 @@ macro_rules! impl_dto {
                     self.0.dto_serialize(serializer)
                 }
             }
-
-            $vis struct [<_ $dto RefOption>]<'a>(pub &'a Option<$inner_entity>);
             impl<'a> serde::Serialize for [<_ $dto RefOption>]<'a> {
                 fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
                 where
@@ -155,8 +159,6 @@ macro_rules! impl_dto {
                     }
                 }
             }
-
-            $vis struct [<_ $dto OptionRef>]<'a>(pub Option<&'a $inner_entity>);
             impl<'a> serde::Serialize for [<_ $dto OptionRef>]<'a> {
                 fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
                 where
@@ -168,8 +170,6 @@ macro_rules! impl_dto {
                     }
                 }
             }
-
-            $vis struct [<_ $dto VecRef>]<'a>(pub &'a Vec<$inner_entity>);
             impl<'a> serde::Serialize for [<_ $dto VecRef>]<'a> {
                 fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
                 where
@@ -185,8 +185,6 @@ macro_rules! impl_dto {
                     state.end()
                 }
             }
-
-            $vis struct [<_ $dto Vec>](pub Vec<$inner_entity>);
             impl serde::Serialize for [<_ $dto Vec>] {
                 fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
                 where
