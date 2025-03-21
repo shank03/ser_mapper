@@ -34,10 +34,12 @@ struct UserResponse { id: String, first_name: String, last_name: String, email_i
 /// All of the below implements [`serde::Serialize`]
 struct _UserResponse(pub UserDbo);
 struct _UserResponseRef<'a>(pub &'a UserDbo);
-struct _UserResponseRefOption<'a>(pub &'a Option<UserDbo>);
-struct _UserResponseOptionRef<'a>(pub Option<&'a UserDbo>);
+struct _UserResponseOption(pub Option<UserDbo>);
+struct _UserResponseRefOption<'a>(pub Option<&'a UserDbo>);
+struct _UserResponseOptionRef<'a>(pub &'a Option<UserDbo>);
 struct _UserResponseVec(pub Vec<UserDbo>);
-struct _UserResponseVecRef<'a>(pub Vec<&'a UserDbo>);
+struct _UserResponseRefVec<'a>(pub Vec<&'a UserDbo>);
+struct _UserResponseVecRef<'a>(pub &'a Vec<UserDbo>);
 // ...
 ```
 

@@ -11,10 +11,12 @@
 /// - `struct UserResponse { /* mentioned fields in macro */ };`
 /// - `struct _UserResponse(pub User);`
 /// - `struct _UserResponseRef<'a>(pub &'a User);`
-/// - `struct _UserResponseRefOption<'a>(pub &'a Option<User>);`
-/// - `struct _UserResponseOptionRef<'a>(pub Option<&'a User>);`
+/// - `struct _UserResponseOption(pub Option<User>);`
+/// - `struct _UserResponseRefOption<'a>(pub Option<&'a User>);`
+/// - `struct _UserResponseOptionRef<'a>(pub &'a Option<User>);`
 /// - `struct _UserResponseVec(pub Vec<User>);`
-/// - `struct _UserResponseVecRef<'a>(pub Vec<&'a User>);`
+/// - `struct _UserResponseRefVec<'a>(pub Vec<&'a User>);`
+/// - `struct _UserResponseVecRef<'a>(pub &'a Vec<User>);`
 ///
 /// and all the structs starting with a `_` will implement [`serde::Serialize`].
 ///
@@ -59,10 +61,12 @@
 /// // - `struct Dto { id: String, first_name: String, last_name: String, email: String, age: u8 };`
 /// // - `struct _Dto(pub DboModel);`
 /// // - `struct _DtoRef<'a>(pub &'a DboModel);`
-/// // - `struct _DtoRefOption<'a>(pub &'a Option<DboModel>);`
-/// // - `struct _DtoOptionRef<'a>(pub Option<&'a DboModel>);`
+/// // - `struct _DtoOption(pub Option<DboModel>);`
+/// // - `struct _DtoRefOption<'a>(pub Option<&'a DboModel>);`
+/// // - `struct _DtoOptionRef<'a>(pub &'a Option<DboModel>);`
 /// // - `struct _DtoVec(pub Vec<DboModel>);`
-/// // - `struct _DtoVecRef<'a>(pub Vec<&'a DboModel>);`
+/// // - `struct _DtoVecRef<'a>(pub &'a Vec<DboModel>);`
+/// // - `struct _DtoRefVec<'a>(pub Vec<&'a DboModel>);`
 /// // and all of these implement [`serde::Serialize`]
 /// impl_dto!(
 ///     #[derive(Debug)]
@@ -127,10 +131,12 @@ macro_rules! impl_dto {
 
             $vis struct [<_ $dto>](pub $inner_entity);
             $vis struct [<_ $dto Ref>]<'a>(pub &'a $inner_entity);
-            $vis struct [<_ $dto RefOption>]<'a>(pub &'a Option<$inner_entity>);
-            $vis struct [<_ $dto OptionRef>]<'a>(pub Option<&'a $inner_entity>);
-            $vis struct [<_ $dto VecRef>]<'a>(pub &'a Vec<$inner_entity>);
+            $vis struct [<_ $dto Option>](pub Option<$inner_entity>);
+            $vis struct [<_ $dto RefOption>]<'a>(pub Option<&'a $inner_entity>);
+            $vis struct [<_ $dto OptionRef>]<'a>(pub &'a Option<$inner_entity>);
             $vis struct [<_ $dto Vec>](pub Vec<$inner_entity>);
+            $vis struct [<_ $dto RefVec>]<'a>(pub Vec<&'a $inner_entity>);
+            $vis struct [<_ $dto VecRef>]<'a>(pub &'a Vec<$inner_entity>);
 
             impl serde::Serialize for [<_ $dto>] {
                 fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
@@ -146,6 +152,17 @@ macro_rules! impl_dto {
                     S: serde::Serializer,
                 {
                     self.0.dto_serialize(serializer)
+                }
+            }
+            impl serde::Serialize for [<_ $dto Option>] {
+                fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+                where
+                    S: serde::Serializer,
+                {
+                    match &self.0 {
+                        Some(inner) => [<_ $dto Ref>](inner).serialize(serializer),
+                        None => serializer.serialize_none(),
+                    }
                 }
             }
             impl<'a> serde::Serialize for [<_ $dto RefOption>]<'a> {
@@ -170,7 +187,15 @@ macro_rules! impl_dto {
                     }
                 }
             }
-            impl<'a> serde::Serialize for [<_ $dto VecRef>]<'a> {
+            impl serde::Serialize for [<_ $dto Vec>] {
+                fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+                where
+                    S: serde::Serializer,
+                {
+                    [<_ $dto VecRef>](&self.0).serialize(serializer)
+                }
+            }
+            impl<'a> serde::Serialize for [<_ $dto RefVec>]<'a> {
                 fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
                 where
                     S: serde::Serializer,
@@ -185,12 +210,19 @@ macro_rules! impl_dto {
                     state.end()
                 }
             }
-            impl serde::Serialize for [<_ $dto Vec>] {
+            impl<'a> serde::Serialize for [<_ $dto VecRef>]<'a> {
                 fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
                 where
                     S: serde::Serializer,
                 {
-                    [<_ $dto VecRef>](&self.0).serialize(serializer)
+                    use serde::ser::SerializeSeq;
+
+                    let mut state = serializer.serialize_seq(Some(self.0.len()))?;
+                    for inner in self.0.iter() {
+                        let item = [<_ $dto Ref>](inner);
+                        state.serialize_element(&item)?;
+                    }
+                    state.end()
                 }
             }
 
@@ -221,47 +253,112 @@ macro_rules! impl_dto {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[derive(Debug)]
+    struct Age(u8);
+
+    #[derive(Debug)]
+    struct Dbo {
+        id: String,
+        full_name: String,
+        age: Age,
+    }
+    impl Dbo {
+        fn new() -> Self {
+            Dbo {
+                id: String::from("abcd_123"),
+                full_name: String::from("Hello world!"),
+                age: Age(69),
+            }
+        }
+    }
+
+    fn get_first_name(a: &str) -> &str {
+        a.split(" ").nth(0).unwrap()
+    }
+    fn get_last_name(a: &str) -> &str {
+        a.split(" ").nth(1).unwrap()
+    }
+
+    // Define mapped DTO
+    impl_dto!(
+        #[derive(Debug)]
+        struct Dto<Dbo> {
+            user_id: String = id,
+            first_name: String = full_name => get_first_name,
+            last_name: String = full_name => get_last_name,
+            age: u8 = age => |a: &Age| a.0,
+        }
+    );
+
+    const EXP_SER: &str =
+        r#"{"user_id":"abcd_123","first_name":"Hello","last_name":"world!","age":69}"#;
+    const EXP_NULL: &str = "null";
 
     #[test]
-    fn test_mapper() {
-        #[derive(Debug)]
-        struct Age(u8);
-
-        #[derive(Debug)]
-        struct Dbo {
-            id: String,
-            full_name: String,
-            age: Age,
-        }
-
-        fn get_first_name(a: &str) -> &str {
-            a.split(" ").nth(0).unwrap()
-        }
-        fn get_last_name(a: &str) -> &str {
-            a.split(" ").nth(1).unwrap()
-        }
-
-        // Define mapped DTO
-        impl_dto!(
-            #[derive(Debug)]
-            struct Dto<Dbo> {
-                user_id: String = id,
-                first_name: String = full_name => get_first_name,
-                last_name: String = full_name => get_last_name,
-                age: u8 = age => |a: &Age| a.0,
-            }
-        );
-
-        let dbo = Dbo {
-            id: String::from("abcdid_123"),
-            full_name: String::from("Hello world!"),
-            age: Age(69),
-        };
-
+    fn test_ser_mapper() {
+        let dbo = Dbo::new();
         let dto = _Dto(dbo);
-        assert_eq!(
-            r#"{"user_id":"abcdid_123","first_name":"Hello","last_name":"world!","age":69}"#,
-            serde_json::to_string(&dto).unwrap()
-        );
+        assert_eq!(EXP_SER, serde_json::to_string(&dto).unwrap());
+    }
+
+    #[test]
+    fn test_ser_mapper_ref() {
+        let dbo = Dbo::new();
+        let dto = _DtoRef(&dbo);
+        assert_eq!(EXP_SER, serde_json::to_string(&dto).unwrap());
+    }
+
+    #[test]
+    fn test_ser_mapper_option() {
+        let dbo = Dbo::new();
+        let dto_some = _DtoOption(Some(dbo));
+        let dto_none = _DtoOption(None);
+
+        assert_eq!(EXP_SER, serde_json::to_string(&dto_some).unwrap());
+        assert_eq!(EXP_NULL, serde_json::to_string(&dto_none).unwrap());
+    }
+
+    #[test]
+    fn test_ser_mapper_option_ref() {
+        let dbo = Some(Dbo::new());
+        let dto_some = _DtoOptionRef(&dbo);
+        let dto_none = _DtoOptionRef(&None);
+
+        assert_eq!(EXP_SER, serde_json::to_string(&dto_some).unwrap());
+        assert_eq!(EXP_NULL, serde_json::to_string(&dto_none).unwrap());
+    }
+
+    #[test]
+    fn test_ser_mapper_ref_option() {
+        let dbo = Dbo::new();
+        let dto_some = _DtoRefOption(Some(&dbo));
+        let dto_none = _DtoRefOption(None);
+
+        assert_eq!(EXP_SER, serde_json::to_string(&dto_some).unwrap());
+        assert_eq!(EXP_NULL, serde_json::to_string(&dto_none).unwrap());
+    }
+
+    #[test]
+    fn test_ser_mapper_vec() {
+        let dbo = Dbo::new();
+        let dto = _DtoVec(vec![dbo]);
+
+        assert_eq!(format!("[{EXP_SER}]"), serde_json::to_string(&dto).unwrap());
+    }
+
+    #[test]
+    fn test_ser_mapper_vec_ref() {
+        let dbo = vec![Dbo::new()];
+        let dto = _DtoVecRef(&dbo);
+
+        assert_eq!(format!("[{EXP_SER}]"), serde_json::to_string(&dto).unwrap());
+    }
+
+    #[test]
+    fn test_ser_mapper_ref_vec() {
+        let dbo = Dbo::new();
+        let dto = _DtoRefVec(vec![&dbo]);
+
+        assert_eq!(format!("[{EXP_SER}]"), serde_json::to_string(&dto).unwrap());
     }
 }
