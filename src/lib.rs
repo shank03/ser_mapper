@@ -32,11 +32,6 @@
 ///     table: String,
 ///     id: String,
 /// }
-/// impl TableId {
-///     fn get_id(t: &TableId) -> &str {
-///         &t.id
-///     }
-/// }
 ///
 /// #[derive(Debug)]
 /// struct Age(u8);
@@ -47,14 +42,6 @@
 ///     full_name: String,
 ///     email: String,
 ///     age: Age,
-/// }
-/// impl DboModel {
-///     fn get_first_name(name: &str) -> &str {
-///         name.split(" ").nth(0).unwrap()
-///     }
-///     fn get_last_name(name: &str) -> &str {
-///         name.split(" ").nth(1).unwrap()
-///     }
 /// }
 ///
 /// // Creates the following wrappers:
@@ -71,11 +58,11 @@
 /// impl_dto!(
 ///     #[derive(Debug)]
 ///     struct Dto<DboModel> {
-///         user_id: String = id => TableId::get_id,
-///         first_name: String = full_name => DboModel::get_first_name,
-///         last_name: String = full_name => DboModel::get_last_name,
+///         user_id: String = id => |id: &TableId| -> &str { &id.id },
+///         first_name: String = full_name => |n: &str| -> &str { n.split(" ").nth(0).unwrap() },
+///         last_name: String = full_name => |n: &str| -> &str { n.split(" ").nth(1).unwrap() },
 ///         email_id: String = email,
-///         age: u8 = age => |a: &Age| a.0,
+///         age: u8 = age => |a: &Age| -> &u8 { &a.0 },
 ///     }
 /// );
 ///
@@ -101,14 +88,12 @@
 /// ```
 #[macro_export]
 macro_rules! impl_dto {
-    // $(<$($l:lifetime),*>)?
-    // $(<$($generic $(= $g_ty)?),*>)?
     (
         $(#[$m:meta])*
         $vis:vis struct $dto:ident<$inner_entity:ty> {
             $(
                 $(#[$field_m:meta])*
-                $field_vis:vis $field:ident: $field_ty:ty = $($inner_path:ident).+ $(=> $st_expr:expr)?,
+                $field_vis:vis $field:ident: $field_ty:ty = $($inner_path:ident).+ $(=> |$fn_v:ident: $vt:ty| -> $fn_r:ty { $fn_expr:expr })?,
             )*
         }
     ) => {
@@ -237,7 +222,12 @@ macro_rules! impl_dto {
                     $(
                         {
                             let value = &self.$($inner_path).+;
-                            let value = $($st_expr)?(value);
+                            $(
+                                fn [<__ $field _ser>]($fn_v: $vt) -> $fn_r {
+                                    $fn_expr
+                                }
+                                let value = [<__ $field _ser>](value);
+                            )?
                             state.serialize_field(stringify!($field), &value)?;
                         }
                     )*
@@ -272,21 +262,14 @@ mod tests {
         }
     }
 
-    fn get_first_name(a: &str) -> &str {
-        a.split(" ").nth(0).unwrap()
-    }
-    fn get_last_name(a: &str) -> &str {
-        a.split(" ").nth(1).unwrap()
-    }
-
     // Define mapped DTO
     impl_dto!(
         #[derive(Debug)]
         struct Dto<Dbo> {
             user_id: String = id,
-            first_name: String = full_name => get_first_name,
-            last_name: String = full_name => get_last_name,
-            age: u8 = age => |a: &Age| a.0,
+            first_name: String = full_name => |f_name: &str| -> &str { f_name.split(" ").nth(0).unwrap() },
+            last_name: String = full_name => |n: &str| -> &str { n.split(" ").nth(1).unwrap() },
+            age: u8 = age => |a: &Age| -> &u8 { &a.0 },
         }
     );
 

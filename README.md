@@ -14,17 +14,24 @@ from DBO/Model.
 
 ## Example
 
+> Breaking change from `0.1.0`: Implicit lambda is replaced with lambda token expression.
+>
+> From below instance, `user_id: String = id => TableId::get_id,` is <br>
+> replaced with `user_id: String = id => |id: &TableId| -> &str { &id.id }`.<br><br>
+> Notice unlike actual lambda, this lambda token expression treats `&TableId` and `&str` as same lifetimes.<br>
+> This lambda token expression is expanded into function to support same lifetimes, removing need of `TableId::get_id`.
+
 Here's how macro is used (see full sample below):
 ```rust
 impl_dto!(
     #[derive(Debug)]    // derives
     pub struct UserResponse<UserDbo> {    // Dto<Dbo/Model>
-        // dto_field: type = dbo_field OptionalMap(=> lambda with &dbo_field:type -> returns mapped_type),
-        user_id: String = id => TableId::get_id,
-        first_name: String = full_name => UserDbo::get_first_name,
-        last_name: String = full_name => UserDbo::get_last_name,
+        // dto_field: type = dbo_field Optional(=> |var: dbo_type| -> ser_type { expr }),
+        user_id: String = id => |id: &TableId| -> &str { &id.id },
+        first_name: String = full_name => |n: &str| -> &str { n.split(" ").nth(0).unwrap() },
+        last_name: String = full_name => |n: &str| -> &str { n.split(" ").nth(1).unwrap() },
         email_id: String = email,
-        age: u8 = age => |a: &Age| a.0,
+        age: u8 = age => |a: &Age| -> &u8 { &a.0 },
     }
 );
 ```
@@ -54,11 +61,6 @@ mod datastore {
         pub table: String,
         pub id: String,
     }
-    impl TableId {
-        pub fn get_id(t: &TableId) -> &str {
-            &t.id
-        }
-    }
 
     #[derive(Debug)]
     pub struct Age(pub u8);
@@ -72,12 +74,18 @@ mod datastore {
         pub hash: String,
         pub age: Age,
     }
-    impl UserDbo {
-        pub fn get_first_name(name: &str) -> &str {
-            name.split(" ").nth(0).unwrap()
-        }
-        pub fn get_last_name(name: &str) -> &str {
-            name.split(" ").nth(1).unwrap()
+
+    pub fn get_dbo() -> UserDbo {
+        UserDbo {
+            id: TableId {
+                table: String::from("User"),
+                id: String::from("abcd_123"),
+            },
+            full_name: String::from("John Doe"),
+            email: String::from("jd@email.com"),
+            password: String::from("password"),
+            hash: String::from("hash"),
+            age: Age(69),
         }
     }
 }
@@ -88,29 +96,19 @@ mod dto {
 
     impl_dto!(
         #[derive(Debug)]
-        pub struct UserResponse<UserDbo> {
-            user_id: String = id => TableId::get_id,
-            first_name: String = full_name => UserDbo::get_first_name,
-            last_name: String = full_name => UserDbo::get_last_name,
+        pub struct UserResponseDto<UserDbo> {
+            user_id: String = id => |id: &TableId| -> &str { &id.id },
+            first_name: String = full_name => |n: &str| -> &str { n.split(" ").nth(0).unwrap() },
+            last_name: String = full_name => |n: &str| -> &str { n.split(" ").nth(1).unwrap() },
             email_id: String = email,
-            age: u8 = age => |a: &Age| a.0,
+            age: u8 = age => |a: &Age| -> &u8 { &a.0 },
         }
     );
 }
 
 fn main() {
     // Some DBO retrieved from DB
-    let dbo = datastore::UserDbo {
-        id: datastore::TableId {
-            table: String::from("User"),
-            id: String::from("abcd_123"),
-        },
-        full_name: String::from("John Doe"),
-        email: String::from("jd@email.com"),
-        password: String::from("hjhy7f98i4398e3328#98"),
-        hash: String::from("dsjjdjjdfjdjdj"),
-        age: datastore::Age(69),
-    };
+    let dbo = datastore::get_dbo();
 
     // Instead of mapping, use either of the wrappers created by `impl_dto` macro
     let dto = dto::_UserResponse(dbo);
