@@ -1,3 +1,6 @@
+#[doc(hidden)]
+pub use paste;
+
 /// Implement DTO serialzation wrapper for DBO/Model
 ///
 /// Instead of mapping DBO/Model to DTO then serializing DTO,
@@ -107,7 +110,7 @@ macro_rules! impl_dto {
             )+
         }
 
-        paste::paste! {
+        $crate::paste::paste! {
             trait [<$dto Serializer>] {
                 fn dto_serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
                 where
