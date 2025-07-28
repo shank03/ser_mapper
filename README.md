@@ -14,24 +14,17 @@ from DBO/Model.
 
 ## Example
 
-> Breaking change from `0.1.0`: Implicit lambda is replaced with lambda token expression.
->
-> From below instance, `user_id: String = id => TableId::get_id,` is <br>
-> replaced with `user_id: String = id => |id: &TableId| -> &str { &id.id }`.<br><br>
-> Notice unlike actual lambda, this lambda token expression treats `&TableId` and `&str` as same lifetimes.<br>
-> This lambda token expression is expanded into function to support same lifetimes, removing need of `TableId::get_id`.
-
 Here's how macro is used (see full sample below):
 ```rust
 impl_dto!(
     #[derive(Debug)]    // derives
     pub struct UserResponse<UserDbo> {    // Dto<Dbo/Model>
         // dto_field: type = dbo_field Optional(=> |var: dbo_type| -> ser_type { expr }),
-        user_id: String = id => |id: &TableId| -> &str { &id.id },
-        first_name: String = full_name => |n: &str| -> &str { n.split(" ").nth(0).unwrap() },
-        last_name: String = full_name => |n: &str| -> &str { n.split(" ").nth(1).unwrap() },
+        user_id: String = id.id,
+        first_name: String = full_name => |n: &String| -> String { n.split(" ").nth(0).unwrap().to_owned() },
+        last_name: String = full_name => |n: &String| -> String { n.split(" ").nth(1).unwrap().to_owned() },
         email_id: String = email,
-        age: u8 = age => |a: &Age| -> &u8 { &a.0 },
+        age: u8 = age => |a: &Age| -> u8 { a.0 },
     }
 );
 ```
@@ -98,10 +91,10 @@ mod dto {
         #[derive(Debug)]
         pub struct UserResponseDto<UserDbo> {
             user_id: String = id => |id: &TableId| -> &str { &id.id },
-            first_name: String = full_name => |n: &str| -> &str { n.split(" ").nth(0).unwrap() },
-            last_name: String = full_name => |n: &str| -> &str { n.split(" ").nth(1).unwrap() },
+            first_name: String = full_name => |n: &String| -> String { n.split(" ").nth(0).unwrap().to_owned() },
+            last_name: String = full_name => |n: &String| -> String { n.split(" ").nth(1).unwrap().to_owned() },
             email_id: String = email,
-            age: u8 = age => |a: &Age| -> &u8 { &a.0 },
+            age: u8 = age => |a: &Age| -> u8 { a.0 },
         }
     );
 }
